@@ -140,7 +140,7 @@ public:
     }
 
     const MachNode* const mach = node->as_Mach();
-    if (mach->barrier_data() == ZBarrierElided) {
+    if ((mach->barrier_data() & ZBarrierElided) != 0) {
       // Don't need liveness data for nodes without barriers
       return NULL;
     }
@@ -329,7 +329,7 @@ static void set_barrier_data(C2Access& access) {
   }
 
   if (access.decorators() & C2_TIGHTLY_COUPLED_ALLOC) {
-    access.set_barrier_data(ZBarrierElided);
+    access.add_barrier_data(ZBarrierElided);
     return;
   }
 
@@ -585,7 +585,7 @@ static bool is_allocation(const Node* node) {
 }
 
 static void elide_mach_barrier(MachNode* mach) {
-  mach->set_barrier_data(ZBarrierElided);
+  mach->add_barrier_data(ZBarrierElided);
 }
 
 void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_List& access_dominators) const {
@@ -717,7 +717,7 @@ void ZBarrierSetC2::analyze_dominating_barriers() const {
         }
         break;
       case Op_StoreP:
-        if (mach->barrier_data() != 0) {
+        if ((mach->barrier_data() & ZBarrierTypeMask) != 0) {
           stores.push(mach);
           load_dominators.push(mach);
           store_dominators.push(mach);
@@ -727,7 +727,7 @@ void ZBarrierSetC2::analyze_dominating_barriers() const {
       case Op_CompareAndExchangeP:
       case Op_CompareAndSwapP:
       case Op_GetAndSetP:
-        if (mach->barrier_data() != 0) {
+        if ((mach->barrier_data() & ZBarrierTypeMask) != 0) {
           atomics.push(mach);
           load_dominators.push(mach);
           store_dominators.push(mach);
@@ -829,9 +829,9 @@ void ZBarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) co
 void ZBarrierSetC2::eliminate_gc_barrier_data(Node* node) const {
   if (node->is_Mem()) {
     MemNode* mem = node->as_Mem();
-    mem->set_barrier_data(ZBarrierElided);
+    mem->add_barrier_data(ZBarrierElided);
   } else if (node->is_LoadStore()) {
     LoadStoreNode* loadstore = node->as_LoadStore();
-    loadstore->set_barrier_data(ZBarrierElided);
+    loadstore->add_barrier_data(ZBarrierElided);
   }
 }
