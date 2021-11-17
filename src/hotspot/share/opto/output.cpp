@@ -459,6 +459,11 @@ void PhaseOutput::Output() {
 
   BuildOopMaps();
 
+  if (PrintBarrierSetStatistics) {
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    bs->gather_stats();
+  }
+
   if (C->failing())  {
     return;
   }

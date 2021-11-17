@@ -599,6 +599,9 @@ const int ObjectAlignmentInBytes = 8;
   product(bool, PrintNMethods, false, DIAGNOSTIC,                           \
           "Print assembly code for nmethods when generated")                \
                                                                             \
+  product(bool, PrintBarrierSetStatistics, false, DIAGNOSTIC,               \
+          "Print statistics for barriers and associated optimizations")     \
+                                                                            \
   product(bool, PrintNativeNMethods, false, DIAGNOSTIC,                     \
           "Print assembly code for native nmethods when generated")         \
                                                                             \
