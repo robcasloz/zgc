@@ -302,6 +302,9 @@ public:
   virtual void emit_stubs(CodeBuffer& cb) const { }
 
   static int arraycopy_payload_base_offset(bool is_array);
+
+  virtual void print_stats()  const { tty->print_cr("--- No C2BarrierSet stats ---"); };
+  virtual void gather_stats() const { };
 };
 
 #endif // SHARE_GC_SHARED_C2_BARRIERSETC2_HPP
