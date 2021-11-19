@@ -40,6 +40,7 @@ const uint8_t ZBarrierTypeMask           = 0xf;
 const uint8_t ZBarrierElided             = 16;
 // Elision type bits - inclusive with ZBarrierElided
 const uint8_t ZBarrierDomElided          = 32;
+const uint8_t ZBarrierSABElided          = 64;
 
 class Block;
 class MachNode;
@@ -135,6 +136,7 @@ public:
 
   virtual void late_barrier_analysis() const;
   virtual int estimate_stub_size() const;
+  virtual int estimate_mach_node_size(MachNode* mach) const;
   virtual void emit_stubs(CodeBuffer& cb) const;
   virtual void eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const;
   virtual void eliminate_gc_barrier_data(Node* node) const;
