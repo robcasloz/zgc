@@ -569,7 +569,6 @@ static bool is_allocation(const Node* node) {
   if (fast_mach->ideal_Opcode() != Op_LoadP) {
     return false;
   }
-  const TypePtr* adr_type = NULL;
   intptr_t offset;
   const Node* base = get_base_and_offset(fast_mach, offset);
   if (base == NULL || !base->is_Mach()) {

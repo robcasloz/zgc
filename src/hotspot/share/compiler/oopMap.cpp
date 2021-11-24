@@ -189,6 +189,17 @@ void OopMap::set_derived_oop(VMReg reg, VMReg derived_from_local_register ) {
   }
 }
 
+void OopMap::set_indirect_oop(VMReg reg, short offset) {
+  assert(reg->value() < _locs_length, "too big reg value for stack size");
+  assert((_locs_used[reg->value()] == OopMapValue::oop_value) ||
+      (_locs_used[reg->value()] == OopMapValue::callee_saved_value),
+       "must already be in oop map");
+
+  OopMapValue o(reg, offset);
+  o.write_on(write_stream());
+  increment_count();
+}
+
 // OopMapSet
 
 OopMapSet::OopMapSet() : _list(MinOopMapAllocation) {}
@@ -364,6 +375,8 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
         }
 #endif
         oop_fn->do_oop(nl);
+      } else if (omv.type() == OopMapValue::indirect_oop) {
+        ShouldNotReachHere(); // TODO
       }
     }
   }
@@ -429,7 +442,11 @@ void print_register_type(OopMapValue::oop_types x, VMReg optional,
     optional->print_on(st);
     break;
   case OopMapValue::derived_oop_value:
-    st->print("Derived_oop_");
+    st->print("Derived_oop");
+    optional->print_on(st);
+    break;
+  case OopMapValue::indirect_oop:
+    st->print("Indirect_");
     optional->print_on(st);
     break;
   default:
@@ -438,8 +455,12 @@ void print_register_type(OopMapValue::oop_types x, VMReg optional,
 }
 
 void OopMapValue::print_on(outputStream* st) const {
-  reg()->print_on(st);
-  st->print("=");
+  if (type() != indirect_oop) {
+    reg()->print_on(st);
+    st->print("=");
+  } else {
+    st->print("=(%i)", reg_as_offset());
+  }
   print_register_type(type(),content_reg(),st);
   st->print(" ");
 }
