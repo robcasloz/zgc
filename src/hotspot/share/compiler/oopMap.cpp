@@ -248,7 +248,7 @@ private:
 void OopMapSort::sort() {
   for (OopMapStream oms(_map); !oms.is_done(); oms.next()) {
     OopMapValue omv = oms.current();
-    assert(omv.type() == OopMapValue::oop_value || omv.type() == OopMapValue::narrowoop_value || omv.type() == OopMapValue::derived_oop_value || omv.type() == OopMapValue::callee_saved_value, "");
+    assert(omv.type() == OopMapValue::oop_value || omv.type() == OopMapValue::narrowoop_value || omv.type() == OopMapValue::derived_oop_value || omv.type() == OopMapValue::callee_saved_value || omv.type() == OopMapValue::indirect_oop, "");
   }
 
   for (OopMapStream oms(_map); !oms.is_done(); oms.next()) {
@@ -272,6 +272,15 @@ void OopMapSort::sort() {
       int pos = find_derived_position(omv, start);
       assert(pos > 0, "");
       insert(omv, pos);
+    }
+  }
+
+  // Indirect OopMap values must be placed after their corresponding "regular"
+  // OOpMap values, so that 'iterate_oops_do()' visits them after they have been
+  // (possibly) relocated (by calling 'do_oop()').
+  for (OopMapStream oms(_map); !oms.is_done(); oms.next()) {
+    if (oms.current().type() == OopMapValue::indirect_oop) {
+      insert(oms.current(), _count);
     }
   }
 }
@@ -359,6 +368,17 @@ void OopMap::set_derived_oop(VMReg reg, VMReg derived_from_local_register ) {
   } else {
     set_xxx(reg, OopMapValue::derived_oop_value, derived_from_local_register);
   }
+}
+
+void OopMap::set_indirect_oop(VMReg reg, short offset) {
+  assert(reg->value() < _locs_length, "too big reg value for stack size");
+  assert((_locs_used[reg->value()] == OopMapValue::oop_value) ||
+      (_locs_used[reg->value()] == OopMapValue::callee_saved_value),
+       "must already be in oop map");
+
+  OopMapValue o(reg, offset);
+  o.write_on(write_stream());
+  increment_count();
 }
 
 // OopMapSet
@@ -597,7 +617,11 @@ void print_register_type(OopMapValue::oop_types x, VMReg optional,
     optional->print_on(st);
     break;
   case OopMapValue::derived_oop_value:
-    st->print("Derived_oop_");
+    st->print("Derived_oop");
+    optional->print_on(st);
+    break;
+  case OopMapValue::indirect_oop:
+    st->print("Indirect_");
     optional->print_on(st);
     break;
   default:
@@ -606,8 +630,12 @@ void print_register_type(OopMapValue::oop_types x, VMReg optional,
 }
 
 void OopMapValue::print_on(outputStream* st) const {
-  reg()->print_on(st);
-  st->print("=");
+  if (type() != indirect_oop) {
+    reg()->print_on(st);
+    st->print("=");
+  } else {
+    st->print("=(%i)", reg_as_offset());
+  }
   print_register_type(type(),content_reg(),st);
   st->print(" ");
 }
