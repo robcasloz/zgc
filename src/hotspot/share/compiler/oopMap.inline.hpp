@@ -145,6 +145,8 @@ void OopMapDo<OopFnT, DerivedOopFnT, ValueFilterT>::iterate_oops_do(const frame 
         }
 #endif
         _oop_fn->do_oop(nl);
+      } else if (omv.type() == OopMapValue::indirect_oop) {
+        ShouldNotReachHere(); // TODO
       }
     }
   }
