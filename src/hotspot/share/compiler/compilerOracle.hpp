@@ -87,6 +87,9 @@ NOT_PRODUCT(option(IGVPrintLevel, "IGVPrintLevel", Intx)) \
   option(VectorizeDebug, "VectorizeDebug", Uintx) \
   option(CloneMapDebug, "CloneMapDebug", Bool) \
   option(IncrementalInlineForceCleanup, "IncrementalInlineForceCleanup", Bool) \
+  option(UseDomBarrierElimination, "UseDomBarrierElimination", Bool) \
+  option(UseSafepointAttachedBarriers, "UseSafepointAttachedBarriers", Bool) \
+  option(TraceBarrierElimination, "TraceBarrierElimination", Bool) \
   option(MaxNodeLimit, "MaxNodeLimit", Intx)  \
 NOT_PRODUCT(option(TestOptionInt,    "TestOptionInt",    Intx)) \
 NOT_PRODUCT(option(TestOptionUint,   "TestOptionUint",   Uintx)) \
