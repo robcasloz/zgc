@@ -43,7 +43,7 @@ private:
   bool _unaligned_access; // Unaligned access from unsafe
   bool _mismatched_access; // Mismatched access from unsafe: byte read in integer array for instance
   bool _unsafe_access;     // Access of unsafe origin.
-  uint8_t _barrier_data;   // Bit field with barrier information
+  uint16_t _barrier_data;  // Bit field with barrier information
 
 protected:
 #ifdef ASSERT
@@ -140,9 +140,9 @@ public:
 #endif
   }
 
-  uint8_t barrier_data() { return _barrier_data; }
-  void set_barrier_data(uint8_t barrier_data) { _barrier_data = barrier_data; }
-  void add_barrier_data(uint8_t barrier_data) { _barrier_data |= barrier_data; }
+  uint16_t barrier_data() { return _barrier_data; }
+  void set_barrier_data(uint16_t barrier_data) { _barrier_data = barrier_data; }
+  void add_barrier_data(uint16_t barrier_data) { _barrier_data |= barrier_data; }
 
   // Search through memory states which precede this node (load or store).
   // Look for an exact match for the address, with no intervening
@@ -231,7 +231,7 @@ public:
                     const TypePtr* at, const Type* rt, BasicType bt,
                     MemOrd mo, ControlDependency control_dependency = DependsOnlyOnTest,
                     bool require_atomic_access = false, bool unaligned = false, bool mismatched = false, bool unsafe = false,
-                    uint8_t barrier_data = 0);
+                    uint16_t barrier_data = 0);
 
   virtual uint hash()   const;  // Check the type
 
@@ -836,7 +836,7 @@ class LoadStoreNode : public Node {
 private:
   const Type* const _type;      // What kind of value is loaded?
   const TypePtr* _adr_type;     // What kind of memory is being addressed?
-  uint8_t _barrier_data;        // Bit field with barrier information
+  uint16_t _barrier_data;       // Bit field with barrier information
   virtual uint size_of() const; // Size is bigger
 public:
   LoadStoreNode( Node *c, Node *mem, Node *adr, Node *val, const TypePtr* at, const Type* rt, uint required );
@@ -851,9 +851,9 @@ public:
   bool result_not_used() const;
   MemBarNode* trailing_membar() const;
 
-  uint8_t barrier_data() { return _barrier_data; }
-  void set_barrier_data(uint8_t barrier_data) { _barrier_data = barrier_data; }
-  void add_barrier_data(uint8_t barrier_data) { _barrier_data |= barrier_data; }
+  uint16_t barrier_data() { return _barrier_data; }
+  void set_barrier_data(uint16_t barrier_data) { _barrier_data = barrier_data; }
+  void add_barrier_data(uint16_t barrier_data) { _barrier_data |= barrier_data; }
 };
 
 class LoadStoreConditionalNode : public LoadStoreNode {
