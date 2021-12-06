@@ -100,27 +100,32 @@ void OopMapDo<OopFnT, DerivedOopFnT, ValueFilterT>::iterate_oops_do(const frame 
   if (_oop_fn != nullptr) {
     for (OopMapStream oms(oopmap); !oms.is_done(); oms.next()) {
       OopMapValue omv = oms.current();
-      if (omv.type() != OopMapValue::oop_value && omv.type() != OopMapValue::narrowoop_value)
+      if (omv.type() != OopMapValue::oop_value &&
+          omv.type() != OopMapValue::narrowoop_value &&
+          omv.type() != OopMapValue::indirect_oop)
         continue;
-      void** loc = (void**) fr->oopmapreg_to_location(omv.reg(),reg_map);
-      // It should be an error if no location can be found for a
-      // register mentioned as contained an oop of some kind.  Maybe
-      // this was allowed previously because value_value items might
-      // be missing?
+      void** loc;
+      if (omv.type() != OopMapValue::indirect_oop) {
+        loc = (void**) fr->oopmapreg_to_location(omv.reg(), reg_map);
+        // It should be an error if no location can be found for a
+        // register mentioned as contained an oop of some kind.  Maybe
+        // this was allowed previously because value_value items might
+        // be missing?
 #ifdef ASSERT
-      if (loc == NULL) {
-        if (reg_map->should_skip_missing())
-          continue;
-        VMReg reg = omv.reg();
-        tty->print_cr("missing saved register: reg: " INTPTR_FORMAT " %s loc: %p", reg->value(), reg->name(), loc);
-        fr->print_on(tty);
-      }
+        if (loc == NULL) {
+          if (reg_map->should_skip_missing())
+            continue;
+          VMReg reg = omv.reg();
+          tty->print_cr("missing saved register: reg: " INTPTR_FORMAT " %s loc: %p", reg->value(), reg->name(), loc);
+          fr->print_on(tty);
+        }
 #endif
-      if (loc == NULL) {
-        tty->print("oops reg: "); omv.reg()->print_on(tty); tty->cr();
-        fr->print_on(tty);
+        if (loc == NULL) {
+          tty->print("oops reg: "); omv.reg()->print_on(tty); tty->cr();
+          fr->print_on(tty);
+        }
+        guarantee(loc != NULL, "missing saved register");
       }
-      guarantee(loc != NULL, "missing saved register");
       if ( omv.type() == OopMapValue::oop_value ) {
         void* val = *loc;
         if (ValueFilterT::should_skip(val)) { // TODO: UGLY (basically used to decide if we're freezing/thawing continuation)
