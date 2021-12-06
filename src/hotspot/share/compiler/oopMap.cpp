@@ -353,20 +353,20 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
     // We want coop and oop oop_types
     for (OopMapStream oms(map); !oms.is_done(); oms.next()) {
       OopMapValue omv = oms.current();
-      void** loc = (void**) fr->oopmapreg_to_location(omv.reg(),reg_map);
-      // It should be an error if no location can be found for a
-      // register mentioned as contained an oop of some kind.  Maybe
-      // this was allowed previously because value_value items might
-      // be missing?
-      guarantee(loc != NULL, "missing saved register");
       if ( omv.type() == OopMapValue::oop_value ) {
-        void* val = *loc;
-        if (!loc_has_oop(loc)) {
+        oop* loc = fr->oopmapreg_to_oop_location(omv.reg(), reg_map);
+        // It should be an error if no location can be found for a
+        // register mentioned as contained an oop of some kind.  Maybe
+        // this was allowed previously because value_value items might
+        // be missing?
+        guarantee(loc != NULL, "missing saved register");
+        if (!loc_has_oop((void**) loc)) {
           continue;
         }
-        oop* oop_loc = (oop*)loc;
-        oop_fn->do_oop(oop_loc);
+        oop_fn->do_oop(loc);
       } else if ( omv.type() == OopMapValue::narrowoop_value ) {
+        oop* loc = fr->oopmapreg_to_oop_location(omv.reg(), reg_map);
+        guarantee(loc != NULL, "missing saved register");
         narrowOop *nl = (narrowOop*)loc;
 #ifndef VM_LITTLE_ENDIAN
         VMReg vmReg = omv.reg();
@@ -378,10 +378,10 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
         }
 #endif
         oop_fn->do_oop(nl);
-      } else if ( omv.type() == OopMapValue::indirect_oop ) {
+      } else if (omv.type() == OopMapValue::indirect_oop) {
         // TODO Remove GC specific handling
 
-        oop* loc = fr->oopmapreg_to_oop_location(omv.content_reg(),reg_map);
+        oop* loc = fr->oopmapreg_to_oop_location(omv.content_reg(), reg_map);
         short offset = omv.reg_as_offset();
         guarantee(loc != NULL, "missing saved register");
         guarantee(offset != 0, "Should be a reasonable offset");
