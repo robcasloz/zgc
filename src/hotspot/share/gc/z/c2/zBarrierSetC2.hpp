@@ -42,7 +42,7 @@ const uint16_t ZBarrierElided             = 32;
 // Elision type bits - inclusive with ZBarrierElided
 const uint16_t ZBarrierDomElided          = 64;
 const uint16_t ZBarrierSABElided          = 128;
-const uint16_t ZBarrierSABBailout         = 256;
+const uint16_t ZBarrierNullCheckRemoval   = 256;
 
 class Block;
 class MachNode;
@@ -61,6 +61,8 @@ public:
   RegMask& live() const;
   Label* entry();
   Label* continuation();
+
+  const MachNode* node() { return _node; };
 
   virtual Register result() const = 0;
   virtual void emit_code(MacroAssembler& masm) = 0;
