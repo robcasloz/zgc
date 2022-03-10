@@ -27,8 +27,6 @@
 
 #include "compiler/oopMap.hpp"
 
-// TODO remove dependence
-#include "gc/z/zBarrier.inline.hpp"
 #include "oops/compressedOops.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/globals.hpp"
@@ -153,8 +151,6 @@ void OopMapDo<OopFnT, DerivedOopFnT, ValueFilterT>::iterate_oops_do(const frame 
 #endif
         _oop_fn->do_oop(nl);
       } else if ( omv.type() == OopMapValue::indirect_oop ) {
-        // TODO Remove GC specific handling
-
         oop* loc = fr->oopmapreg_to_oop_location(omv.content_reg(), reg_map);
         // This indirect OopMap value is guaranteed to be visited after its
         // corresponding "regular" OopMap value (see 'OopMapSort::sort()'), so
@@ -165,12 +161,15 @@ void OopMapDo<OopFnT, DerivedOopFnT, ValueFilterT>::iterate_oops_do(const frame 
         guarantee(offset != 0, "Should be a reasonable offset");
         void* val = *(void**)loc;
 
-        // check that base oop is ok.
         oopDesc* base = reinterpret_cast<oopDesc*>(val);
-        //oopDesc::verify(base); // TODO safe?
 
-        zpointer* indirect_oop = reinterpret_cast<zpointer*>((address)base + offset);
-        ZBarrier::store_barrier_on_heap_oop_field(indirect_oop, true);
+        // Do a load, and a store - the proper barriers will be applied.
+        oop tmp = base->obj_field(offset);
+        base->obj_field_put(offset, tmp);
+
+        // No current abstraction to do this in a gc agnostic way:
+        // zpointer* indirect_oop = reinterpret_cast<zpointer*>((address)base + offset);
+        // ZBarrier::store_barrier_on_heap_oop_field(indirect_oop, true);
       }
     }
   }
