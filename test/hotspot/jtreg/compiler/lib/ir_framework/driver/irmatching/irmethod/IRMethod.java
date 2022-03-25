@@ -38,10 +38,9 @@ import java.util.List;
 public class IRMethod {
     private final Method method;
     private final List<IRRule> irRules;
-    private final StringBuilder outputBuilder;
-    private String output;
     private String idealOutput;
     private String optoAssemblyOutput;
+    private boolean hasOutput;
 
     public IRMethod(Method method, int[] ruleIds, IR[] irAnnos) {
         this.method = method;
@@ -49,10 +48,9 @@ public class IRMethod {
         for (int i : ruleIds) {
             irRules.add(new IRRule(this, i, irAnnos[i - 1]));
         }
-        this.outputBuilder = new StringBuilder();
-        this.output = "";
         this.idealOutput = "";
         this.optoAssemblyOutput = "";
+        this.hasOutput = false;
     }
 
     public Method getMethod() {
@@ -60,27 +58,21 @@ public class IRMethod {
     }
 
 
-    /**
-     * The Ideal output comes always before the Opto Assembly output. We might parse multiple C2 compilations of this method.
-     * Only keep the very last one by overriding 'output'.
-     */
     public void setIdealOutput(String idealOutput) {
-        outputBuilder.setLength(0);
         this.idealOutput = "PrintIdeal:" + System.lineSeparator() + idealOutput;
-        outputBuilder.append(this.idealOutput);
+        hasOutput = true;
     }
 
-    /**
-     * The Opto Assembly output comes after the Ideal output. Simply append to 'output'.
-     */
     public void setOptoAssemblyOutput(String optoAssemblyOutput) {
         this.optoAssemblyOutput = "PrintOptoAssembly:" + System.lineSeparator() + optoAssemblyOutput;
-        outputBuilder.append(System.lineSeparator()).append(System.lineSeparator()).append(this.optoAssemblyOutput);
-        output = outputBuilder.toString();
+        hasOutput = true;
     }
 
     public String getOutput() {
-        return output;
+        if (!hasOutput) {
+            return "";
+        }
+        return getIdealOutput() + System.lineSeparator() + System.lineSeparator() + getOptoAssemblyOutput();
     }
 
     public String getIdealOutput() {
@@ -97,7 +89,7 @@ public class IRMethod {
     public IRMethodMatchResult applyIRRules() {
         TestFramework.check(!irRules.isEmpty(), "IRMethod cannot be created if there are no IR rules to apply");
         List<IRRuleMatchResult> results = new ArrayList<>();
-        if (!output.isEmpty()) {
+        if (hasOutput) {
             return getNormalMatchResult(results);
         } else {
             return new MissingCompilationResult(this, irRules.size());
