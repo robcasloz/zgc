@@ -167,6 +167,7 @@ public class TestFramework {
     private Set<Integer> scenarioIndices;
     private List<String> flags;
     private int defaultWarmup = -1;
+    private Phase idealPhase = Phase.BEFORE_MATCHING;
 
     /*
      * Public interface methods
@@ -377,6 +378,11 @@ public class TestFramework {
     public TestFramework setDefaultWarmup(int defaultWarmup) {
         TestFormat.check(defaultWarmup >= 0, "Cannot specify a negative default warm-up");
         this.defaultWarmup = defaultWarmup;
+        return this;
+    }
+
+    public TestFramework setIdealPhase(Phase idealPhase) {
+        this.idealPhase = idealPhase;
         return this;
     }
 
@@ -696,6 +702,11 @@ public class TestFramework {
             } else {
                 System.out.println("Skip Flag VM due to not performing IR verification.");
             }
+
+            // Specify phase after which the ideal IR should be printed for IR matching.
+            // FIXME: this should be done within the FlagVM class, and ideally
+            // controlled by test-level annotations as proposed by JDK-8280378.
+            additionalFlags.add("-XX:CompileCommand=PrintIdealPhase," + testClass.getCanonicalName() + "::*," + idealPhase);
 
             System.out.println("Run Test VM" + frameworkAndScenarioFlags + ":");
             runTestVM(additionalFlags);
