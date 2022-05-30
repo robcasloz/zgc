@@ -224,6 +224,8 @@ public:
 
   uint8_t barrier_data() const { return _barrier; }
   void set_barrier_data(uint8_t data) { _barrier = data; }
+  bool has_barrier_flag(uint8_t data) const { return ((_barrier & data) != 0); }
+  bool has_any_barrier_flag() const { return _barrier != 0; }
 
   // Copy inputs and operands to new node of instruction.
   // Called from cisc_version() and short_branch_version().

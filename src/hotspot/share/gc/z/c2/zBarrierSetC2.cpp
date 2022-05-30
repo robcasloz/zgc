@@ -826,3 +826,23 @@ void ZBarrierSetC2::eliminate_gc_barrier_data(Node* node) const {
     loadstore->set_barrier_data(ZBarrierElided);
   }
 }
+
+#ifndef PRODUCT
+void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream *st) const {
+  if (mach->has_barrier_flag(ZBarrierStrong)) {
+    st->print("strong ");
+  }
+  if (mach->has_barrier_flag(ZBarrierWeak)) {
+    st->print("weak ");
+  }
+  if (mach->has_barrier_flag(ZBarrierPhantom)) {
+    st->print("phantom ");
+  }
+  if (mach->has_barrier_flag(ZBarrierNoKeepalive)) {
+    st->print("nokeepalive ");
+  }
+  if (mach->has_barrier_flag(ZBarrierElided)) {
+    st->print("elided ");
+  }
+}
+#endif // !PRODUCT

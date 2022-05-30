@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/barrierSet.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "memory/universe.hpp"
 #include "oops/compressedOops.hpp"
@@ -533,6 +534,11 @@ void MachTypeNode::dump_spec(outputStream *st) const {
     _bottom_type->dump_on(st);
   } else {
     st->print(" NULL");
+  }
+  if (has_any_barrier_flag()) {
+    st->print(" barrier(");
+    BarrierSet::barrier_set()->barrier_set_c2()->dump_barrier_data(this, st);
+    st->print(")");
   }
 }
 #endif
