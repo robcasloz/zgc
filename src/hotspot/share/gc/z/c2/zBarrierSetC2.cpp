@@ -895,4 +895,60 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream* st) co
     st->print("elided ");
   }
 }
+void ZBarrierSetC2::dump_access_info(const Node* node, outputStream *st) const {
+  if (node->is_MachSafePoint()) {
+    st->print("access(safepoint)");
+    return;
+  }
+  // TODO: this is just copied from analyze_dominating_barriers(), extract into
+  // a set of predicate functions (is_load(), is_store(), is_atomic(), etc.).
+  if (node->is_Phi() && is_allocation(node)) {
+    st->print("access(allocation %d)", node->_idx);
+    return;
+  }
+  if (!node->is_Mach()) {
+    return;
+  }
+  MachNode* const mach = node->as_Mach();
+  switch (mach->ideal_Opcode()) {
+  case Op_LoadP:
+    if ((mach->barrier_data() & ZBarrierStrong) != 0 &&
+            (mach->barrier_data() & ZBarrierNoKeepalive) == 0) {
+      st->print("access(load ");
+      dump_mem_info(mach, st);
+      st->print(")");
+    }
+    break;
+  case Op_StoreP:
+    if (mach->barrier_data() != 0) {
+      st->print("access(store ");
+      dump_mem_info(mach, st);
+      st->print(")");
+    }
+    break;
+  case Op_CompareAndExchangeP:
+  case Op_CompareAndSwapP:
+  case Op_GetAndSetP:
+    if (mach->barrier_data() != 0) {
+      st->print("access(atomic");
+      dump_mem_info(mach, st);
+      st->print(")");
+    }
+  default:
+    break;
+  }
+}
+
+void ZBarrierSetC2::dump_mem_info(MachNode* const mach, outputStream* st) const {
+  intptr_t offset;
+  assert(mach != NULL, "mach cannot be NULL");
+  const Node* mem = look_through_node(get_base_and_offset(mach, offset));
+  if (mem == NULL) {
+    st->print("<null mem>");
+  } else {
+    st->print("%d+%ld", mem->_idx, offset);
+  }
+}
+
+
 #endif // !PRODUCT
