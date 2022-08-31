@@ -510,6 +510,12 @@ void IdealGraphPrinter::visit_node(Node *n, bool edges, VectorSet* temp_set) {
     assert(s2.size() < sizeof(buffer), "size in range");
     print_prop("dump_spec", buffer);
 
+    stringStream accessInfoStream;
+    node->dump_access_info(&accessInfoStream);
+    if (accessInfoStream.size() > 0) {
+      print_prop("access_info", accessInfoStream.as_string());
+    }
+
     if (node->is_block_proj()) {
       print_prop("is_block_proj", "true");
     }

@@ -73,5 +73,13 @@
             <attr name="enabled" boolvalue="false"/>
             <attr name="after" stringvalue="Hide uncommon trap blocks"/>
         </file>
+        <file name="Show ZGC barrier analysis nodes only" url="filters/zOnlyBarrier.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Hide exception blocks"/>
+        </file>
+        <file name="Color by ZGC barrier state" url="filters/zColorBarriers.filter">
+            <attr name="enabled" boolvalue="false"/>
+            <attr name="after" stringvalue="Show ZGC barrier analysis nodes only"/>
+        </file>
     </folder>
 </filesystem>

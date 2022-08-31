@@ -1222,4 +1222,41 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream *st) co
     st->print("ncremoval ");
   }
 }
+void ZBarrierSetC2::dump_access_info(const Node* node, outputStream *st) const {
+  if (node->is_MachSafePoint() && !node->is_MachCallLeaf()) {
+    st->print("access(safepoint)");
+    return;
+  }
+  // TODO: this is just copied from analyze_dominating_barriers(), extract into
+  // a set of predicate functions (is_load(), is_store(), is_atomic(), etc.).
+  if (node->is_Phi() && is_allocation(node) && ! is_array_allocation(node)) {
+    st->print("access(allocation)");
+    return;
+  }
+  if (!node->is_Mach()) {
+    return;
+  }
+  MachNode* const mach = node->as_Mach();
+  switch (mach->ideal_Opcode()) {
+  case Op_LoadP:
+    if (mach->has_barrier_flag(ZBarrierStrong) &&
+        !mach->has_barrier_flag(ZBarrierNoKeepalive)) {
+      st->print("access(load)");
+    }
+    break;
+  case Op_StoreP:
+    if (mach->has_barrier_flag(ZBarrierTypeMask)) {
+      st->print("access(store)");
+    }
+    break;
+  case Op_CompareAndExchangeP:
+  case Op_CompareAndSwapP:
+  case Op_GetAndSetP:
+    if (mach->has_barrier_flag(ZBarrierTypeMask)) {
+      st->print("access(atomic)");
+    }
+  default:
+    break;
+  }
+}
 #endif // !PRODUCT
