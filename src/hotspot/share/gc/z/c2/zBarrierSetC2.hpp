@@ -176,6 +176,8 @@ public:
 
 #ifndef PRODUCT
   virtual void dump_barrier_data(const MachNode* mach, outputStream *st) const;
+  virtual void dump_access_info(const Node* node, outputStream *st) const;
+  void dump_mem_info(MachNode* const mach, outputStream* st) const;
 #endif
 };
 

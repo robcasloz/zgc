@@ -1,0 +1,14 @@
+// Remove all nodes except those relevant to ZGC barrier elision analysis.
+
+var f = new RemoveFilter("Show ZGC barrier analysis nodes only");
+f.addRule(
+  new RemoveFilter.RemoveRule(
+    new InvertSelector(
+      new MatcherSelector(
+        new Properties.RegexpPropertyMatcher("access_info", ".+")
+      )
+    ),
+    false
+  )
+);
+f.apply(graph);

@@ -312,6 +312,7 @@ public:
   virtual void dump_barrier_data(const MachNode* mach, outputStream *st) const {
     st->print("%x", mach->barrier_data());
   };
+  virtual void dump_access_info(const Node* node, outputStream *st) const { };
 #endif
 };
 

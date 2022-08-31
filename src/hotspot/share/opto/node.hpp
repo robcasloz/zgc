@@ -1208,6 +1208,8 @@ public:
   void dump_comp() const;            // Print this node in compact representation.
   // Print this node in compact representation.
   void dump_comp(const char* suffix, outputStream *st = tty) const;
+  // Print information about memory accesses, for tracing barrier elimination.
+  void dump_access_info(outputStream* st = tty) const;
  private:
   virtual void dump_req(outputStream* st = tty, DumpConfig* dc = nullptr) const;    // Print required-edge info
   virtual void dump_prec(outputStream* st = tty, DumpConfig* dc = nullptr) const;   // Print precedence-edge info
