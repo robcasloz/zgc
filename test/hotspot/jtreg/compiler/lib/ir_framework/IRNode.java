@@ -66,11 +66,11 @@ public class IRNode {
     public static final String FIELD_ACCESS = "(.*Field: *" + END;
 
     public static final String MACH_PROJ = START + "MachProj" + MID + END;
-    public static final String ZLOAD_P = START + "zLoadP" + MID + " barrier:1 " + END; // barrier:1 = Strong
-    public static final String ZLOAD_P_ELIDED = START + "zLoadP" + MID + " barrier:161 " + END; // barrier:161 = Strong, Elided, SABElided
-    public static final String ZLOAD_P_NULLCHECK_ELIDED = START + "zLoadP" + MID + " barrier:257 " + END; // barrier:257 = Strong, NullCheckRemoval
-    public static final String ZSTORE_P = START + "zStoreP" + MID + " barrier:1 " + END; // barrier:1 = Strong
-    public static final String ZSTORE_P_ELIDED = START + "zStoreP" + MID + " barrier:161 " + END; // barrier:161 = Strong, Elided, SABElided
+    public static final String ZLOAD_P = START + "zLoadP" + MID + "barrier\\(\\s*strong\\s*\\)" + END;
+    public static final String ZLOAD_P_ELIDED = START + "zLoadP" + MID + "barrier\\(\\s*strong elided sab\\s*\\)" + END;
+    public static final String ZLOAD_P_NULLCHECK_ELIDED = START + "zLoadP" + MID + "barrier\\(\\s*strong ncremoval\\s*\\)" + END;
+    public static final String ZSTORE_P = START + "zStoreP" + MID + "barrier\\(\\s*strong\\s*\\)" + END;
+    public static final String ZSTORE_P_ELIDED = START + "zStoreP" + MID + "barrier\\(\\s*strong elided sab\\s*\\)" + END;
     public static final String TESTP_REG = START + "testP_reg" + MID + END;
 
     public static final String STORE = START + "Store(B|C|S|I|L|F|D|P|N)" + MID + END;
