@@ -1192,3 +1192,34 @@ void ZBarrierSetC2::print_stats() const {
   tty->print_cr("Elided after load barrier: %i (%2.1f%%)", _elided_zf, ((float)_elided_zf / (float)_elision_counter[LOAD_COUNTER].barrier_strong * 100));
 }
 
+#ifndef PRODUCT
+void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream *st) const {
+  if (mach->has_barrier_flag(ZBarrierStrong)) {
+    st->print("strong ");
+  }
+  if (mach->has_barrier_flag(ZBarrierWeak)) {
+    st->print("weak ");
+  }
+  if (mach->has_barrier_flag(ZBarrierPhantom)) {
+    st->print("phantom ");
+  }
+  if (mach->has_barrier_flag(ZBarrierNoKeepalive)) {
+    st->print("nokeepalive ");
+  }
+  if (mach->has_barrier_flag(ZBarrierNative)) {
+    st->print("native ");
+  }
+  if (mach->has_barrier_flag(ZBarrierElided)) {
+    st->print("elided ");
+  }
+  if (mach->has_barrier_flag(ZBarrierDomElided)) {
+    st->print("dom ");
+  }
+  if (mach->has_barrier_flag(ZBarrierSABElided)) {
+    st->print("sab ");
+  }
+  if (mach->has_barrier_flag(ZBarrierNullCheckRemoval)) {
+    st->print("ncremoval ");
+  }
+}
+#endif // !PRODUCT

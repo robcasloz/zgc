@@ -483,7 +483,6 @@ void IdealGraphPrinter::visit_node(Node *n, bool edges, VectorSet* temp_set) {
 
     if (node->is_Mach()) {
       print_prop("idealOpcode", (const char *)NodeClassNames[node->as_Mach()->ideal_Opcode()]);
-      print_prop("barrier_data", node->as_Mach()->barrier_data());
     }
 
     print_field(node);

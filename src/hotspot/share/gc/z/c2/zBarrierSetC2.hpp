@@ -173,6 +173,10 @@ public:
   void mark_mach_barrier_sab_bailout(MachNode* mach) const;
   void record_safepoint_attached_barrier(MachNode* const access, Node* mem, MachSafePointNode* sfp DEBUG_ONLY(COMMA Node* dom_access)) const;
   void process_access(MachNode* const access, Node* dom_access, GrowableArray<SafepointAccessRecord*>& access_list, intptr_t access_offset) const;
+
+#ifndef PRODUCT
+  virtual void dump_barrier_data(const MachNode* mach, outputStream *st) const;
+#endif
 };
 
 #endif // SHARE_GC_Z_C2_ZBARRIERSETC2_HPP
