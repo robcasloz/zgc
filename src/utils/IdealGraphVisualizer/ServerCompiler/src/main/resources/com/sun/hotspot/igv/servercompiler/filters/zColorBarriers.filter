@@ -1,4 +1,4 @@
-var safepointColor       = java.awt.Color.decode("#FFAABB");
+var safepointColor       = java.awt.Color.decode("#FFEF81");
 var strongColor          = java.awt.Color.decode("#5D835E");
 var mediumColor          = java.awt.Color.decode("#7CA27D");
 var weakColor            = java.awt.Color.decode("#A0BBA0");
