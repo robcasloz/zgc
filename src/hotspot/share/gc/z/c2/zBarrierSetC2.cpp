@@ -1224,13 +1224,25 @@ void ZBarrierSetC2::dump_barrier_data(const MachNode* mach, outputStream *st) co
 }
 void ZBarrierSetC2::dump_access_info(const Node* node, outputStream *st) const {
   if (node->is_MachSafePoint() && !node->is_MachCallLeaf()) {
-    st->print("access(safepoint)");
+    st->print("access(safepoint");
+    const MachSafePointNode* mach = node->as_MachSafePoint();
+    const GrowableArray<BarrierRecord*>* sabs = mach->_barrier_records;
+    if (sabs != NULL) {
+      st->print(", sabs: ");
+      for (GrowableArrayIterator<BarrierRecord*> it = sabs->begin();
+           it != sabs->end(); ++it) {
+        BarrierRecord* br = *it;
+        dump_mem_info(br->_access, st);
+        st->print(" ");
+      }
+    }
+    st->print(")");
     return;
   }
   // TODO: this is just copied from analyze_dominating_barriers(), extract into
   // a set of predicate functions (is_load(), is_store(), is_atomic(), etc.).
   if (node->is_Phi() && is_allocation(node) && ! is_array_allocation(node)) {
-    st->print("access(allocation)");
+    st->print("access(allocation %d)", node->_idx);
     return;
   }
   if (!node->is_Mach()) {
@@ -1241,22 +1253,41 @@ void ZBarrierSetC2::dump_access_info(const Node* node, outputStream *st) const {
   case Op_LoadP:
     if (mach->has_barrier_flag(ZBarrierStrong) &&
         !mach->has_barrier_flag(ZBarrierNoKeepalive)) {
-      st->print("access(load)");
+      st->print("access(load ");
+      dump_mem_info(mach, st);
+      st->print(")");
     }
     break;
   case Op_StoreP:
     if (mach->has_barrier_flag(ZBarrierTypeMask)) {
-      st->print("access(store)");
+      st->print("access(store ");
+      dump_mem_info(mach, st);
+      st->print(")");
     }
     break;
   case Op_CompareAndExchangeP:
   case Op_CompareAndSwapP:
   case Op_GetAndSetP:
     if (mach->has_barrier_flag(ZBarrierTypeMask)) {
-      st->print("access(atomic)");
+      st->print("access(atomic");
+      dump_mem_info(mach, st);
+      st->print(")");
     }
   default:
     break;
   }
 }
+
+void ZBarrierSetC2::dump_mem_info(MachNode* const mach, outputStream* st) const {
+  intptr_t offset;
+  assert(mach != NULL, "mach cannot be NULL");
+  const Node* mem = look_through_node(mach->get_base_and_offset(offset));
+  if (mem == NULL) {
+    st->print("<null mem>");
+  } else {
+    st->print("%d+%ld", mem->_idx, offset);
+  }
+}
+
+
 #endif // !PRODUCT
