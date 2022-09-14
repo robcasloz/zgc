@@ -24,30 +24,56 @@
 package compiler.lib.ir_framework.driver.irmatching.irmethod;
 
 import compiler.lib.ir_framework.driver.irmatching.MatchResult;
+import compiler.lib.ir_framework.driver.irmatching.visitor.MatchResultVisitor;
 import compiler.lib.ir_framework.driver.irmatching.irrule.IRRuleMatchResult;
 
+import java.util.List;
+
 /**
- * This base class represents an IR matching result of all IR rules of a method.
+ * This class represents an IR matching result of an {@link IRMethod}.
  *
- * @see IRRuleMatchResult
  * @see IRMethod
  */
-abstract public class IRMethodMatchResult implements Comparable<IRMethodMatchResult>, MatchResult {
+public class IRMethodMatchResult implements Comparable<IRMethodMatchResult>, MatchResult {
     protected final IRMethod irMethod;
+    /**
+     * List of all IR rule match results which could have been applied on different compile phases.
+     */
+    private final List<IRRuleMatchResult> irRulesMatchResults;
 
-    IRMethodMatchResult(IRMethod irMethod) {
+    public IRMethodMatchResult(IRMethod irMethod, List<IRRuleMatchResult> irRulesMatchResults) {
         this.irMethod = irMethod;
+        this.irRulesMatchResults = irRulesMatchResults;
     }
 
-    abstract public String getMatchedCompilationOutput();
+    public int getFailedIRRuleCount() {
+        return irRulesMatchResults.size();
+    }
 
-    abstract public int getFailedIRRuleCount();
+    public IRMethod getIRMethod() {
+        return irMethod;
+    }
+
+    @Override
+    public boolean fail() {
+        return !irRulesMatchResults.isEmpty();
+    }
 
     /**
-     * Used to sort the failed IR methods alphabetically.
+     * Comparator method to sort the failed IR methods alphabetically.
      */
     @Override
     public int compareTo(IRMethodMatchResult other) {
         return this.irMethod.getMethod().getName().compareTo(other.irMethod.getMethod().getName());
+    }
+
+    @Override
+    public void accept(MatchResultVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
+    public void acceptChildren(MatchResultVisitor visitor) {
+        acceptChildren(visitor, irRulesMatchResults);
     }
 }

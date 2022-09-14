@@ -23,7 +23,9 @@
 
 package compiler.lib.ir_framework.test;
 
-import compiler.lib.ir_framework.*;
+import compiler.lib.ir_framework.IR;
+import compiler.lib.ir_framework.IRNode;
+import compiler.lib.ir_framework.TestFramework;
 import compiler.lib.ir_framework.shared.*;
 import jdk.test.whitebox.WhiteBox;
 
@@ -33,7 +35,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.HashSet;
 
 /**
  * Prints an encoding to the dedicated test framework socket whether @IR rules of @Test methods should be applied or not.
@@ -178,10 +179,10 @@ public class IREncodingPrinter {
     private boolean isDefaultRegexUnsupported(IR irAnno) {
         try {
             for (String s : irAnno.failOn()) {
-                IRNode.checkDefaultRegexSupported(s);
+                IRNode.checkDefaultIRNodeSupported(s);
             }
             for (String s : irAnno.counts()) {
-                IRNode.checkDefaultRegexSupported(s);
+                IRNode.checkDefaultIRNodeSupported(s);
             }
         } catch (CheckedTestFrameworkException e) {
             TestFrameworkSocket.write("Skip Rule " + ruleIndex + ": " + e.getMessage(), TestFrameworkSocket.DEFAULT_REGEX_TAG, true);
@@ -317,11 +318,12 @@ public class IREncodingPrinter {
     private <T extends Comparable<T>> boolean checkFlag(Function<String, T> parseFunction, String kind, String flag,
                                                         String value, T actualFlagValue) {
         try {
-            String postFixErrorMsg = "for " + kind + " based flag \"" + flag + "\"" + failAt();
-            Comparison<T> comparison = ComparisonConstraintParser.parse(value, parseFunction, postFixErrorMsg);
+            Comparison<T> comparison = ComparisonConstraintParser.parse(value, parseFunction);
             return comparison.compare(actualFlagValue);
         } catch (TestFormatException e) {
             // Format exception, do not apply rule.
+            String postFixErrorMsg = " for " + kind + " based flag \"" + flag + "\"" + failAt();
+            TestFormat.failNoThrow(e.getMessage() + postFixErrorMsg);
             return false;
         }
     }

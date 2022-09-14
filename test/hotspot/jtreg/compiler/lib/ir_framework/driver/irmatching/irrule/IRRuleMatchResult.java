@@ -23,80 +23,61 @@
 
 package compiler.lib.ir_framework.driver.irmatching.irrule;
 
-import compiler.lib.ir_framework.TestFramework;
+import compiler.lib.ir_framework.CompilePhase;
+import compiler.lib.ir_framework.IR;
 import compiler.lib.ir_framework.driver.irmatching.MatchResult;
-import compiler.lib.ir_framework.driver.irmatching.OutputMatch;
+import compiler.lib.ir_framework.driver.irmatching.irrule.phase.CompilePhaseIRRuleMatchResult;
+import compiler.lib.ir_framework.driver.irmatching.visitor.MatchResultVisitor;
+
+import java.util.Comparator;
+import java.util.TreeSet;
 
 /**
- * This class represents an IR matching result of an IR rule.
+ * This class represents an IR matching result of an {@link IRRule} (applied to all compile phases specified in
+ * {@link IR#phase()}). The {@link CompilePhaseIRRuleMatchResult} are kept in definition order as defined in
+ * {@link CompilePhase}.
  *
- * @see CheckAttributeMatchResult
  * @see IRRule
  */
 public class IRRuleMatchResult implements MatchResult {
-    private final IRRule irRule;
-    private CheckAttributeMatchResult failOnFailures = null;
-    private CheckAttributeMatchResult countsFailures = null;
-    private OutputMatch outputMatch;
+    private final int irRuleId;
+    private final IR irAnno;
+    /**
+     * List of all compile phase match results for this IR rule which is sorted by the {@link CompilePhase} enum
+     * definition order.
+     */
+    private final TreeSet<CompilePhaseIRRuleMatchResult> compilePhaseIRRuleMatchResults
+            = new TreeSet<>(Comparator.comparingInt(r -> r.getCompilePhase().ordinal()));
 
     public IRRuleMatchResult(IRRule irRule) {
-        this.irRule = irRule;
-        this.outputMatch = OutputMatch.NONE;
+        this.irRuleId = irRule.getRuleId();
+        this.irAnno = irRule.getIRAnno();
     }
 
-    private boolean hasFailOnFailures() {
-        return failOnFailures != null;
+    public int getRuleId() {
+        return irRuleId;
     }
 
-    public void setFailOnFailures(CheckAttributeMatchResult failOnFailures) {
-        this.failOnFailures = failOnFailures;
+    public IR getIRAnno() {
+        return irAnno;
     }
 
-    private boolean hasCountsFailures() {
-        return countsFailures != null;
-    }
-
-    public void setCountsFailures(CheckAttributeMatchResult countsFailures) {
-        this.countsFailures = countsFailures;
-    }
-
-    public OutputMatch getOutputMatch() {
-        return outputMatch;
+    public void addCompilePhaseIRMatchResult(CompilePhaseIRRuleMatchResult result) {
+        compilePhaseIRRuleMatchResults.add(result);
     }
 
     @Override
     public boolean fail() {
-        return failOnFailures != null || countsFailures != null;
+        return !compilePhaseIRRuleMatchResults.isEmpty();
     }
 
-    public void updateOutputMatch(OutputMatch newOutputMatch) {
-        TestFramework.check(newOutputMatch != OutputMatch.NONE, "must be valid state");
-        switch (outputMatch) {
-            case NONE -> outputMatch = newOutputMatch;
-            case IDEAL -> outputMatch = newOutputMatch != OutputMatch.IDEAL
-                    ? OutputMatch.BOTH : OutputMatch.IDEAL;
-            case OPTO_ASSEMBLY -> outputMatch = newOutputMatch != OutputMatch.OPTO_ASSEMBLY
-                    ? OutputMatch.BOTH : OutputMatch.OPTO_ASSEMBLY;
-        }
-    }
-
-    /**
-     * Build a failure message based on the collected failures of this object.
-     */
     @Override
-    public String buildFailureMessage() {
-        StringBuilder failMsg = new StringBuilder();
-        failMsg.append(getIRRuleLine());
-        if (hasFailOnFailures()) {
-            failMsg.append(failOnFailures.buildFailureMessage());
-        }
-        if (hasCountsFailures()) {
-            failMsg.append(countsFailures.buildFailureMessage());
-        }
-        return failMsg.toString();
+    public void accept(MatchResultVisitor visitor) {
+        visitor.visit(this);
     }
 
-    private String getIRRuleLine() {
-        return "   * @IR rule " + irRule.getRuleId() + ": \"" + irRule.getIRAnno() + "\"" + System.lineSeparator();
+    @Override
+    public void acceptChildren(MatchResultVisitor visitor) {
+        acceptChildren(visitor, compilePhaseIRRuleMatchResults);
     }
 }

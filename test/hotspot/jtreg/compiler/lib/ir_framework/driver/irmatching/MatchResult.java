@@ -23,18 +23,38 @@
 
 package compiler.lib.ir_framework.driver.irmatching;
 
+import compiler.lib.ir_framework.driver.irmatching.visitor.MatchResultVisitor;
+
+import java.util.Collection;
+
 /**
- * Interface used by all classes which represent a IR match result. A result should also provide a failure message
- * in a pretty format to be used by the {@link IRMatcher}.
+ * This interface is implemented by all classes that represent an IR match result of a {@link Matchable} class.
+ * A match result class accepts a {@link MatchResultVisitor} to visit the result (i.e. for reporting etc.).
+ * By default, children of a match result are only visited if the failure happened in the child element.
  */
 public interface MatchResult {
     /**
-     * Does this match result represent a failure?
+     * Does this match result represent an IR match failure?
      */
     boolean fail();
 
+    void accept(MatchResultVisitor visitor);
+
     /**
-     * Builds a failure message in a pretty format to be used by the IR matching failure reporting.
+     * If the implementing class is not a leaf, it must call
+     * {@link MatchResult#acceptChildren(MatchResultVisitor, Collection)} which calls
+     * {@link MatchResult#accept(MatchResultVisitor)} on all the children specified in the parameter.
      */
-    String buildFailureMessage();
+    default void acceptChildren(MatchResultVisitor visitor) {}
+
+    /**
+     * Call {@link #accept(MatchResultVisitor)} on all children which are port of an IR matching failure.
+     */
+    default void acceptChildren(MatchResultVisitor visitor, Collection<? extends MatchResult> children) {
+        for (var result : children) {
+            if (result.fail()) {
+                result.accept(visitor);
+            }
+        }
+    }
 }
