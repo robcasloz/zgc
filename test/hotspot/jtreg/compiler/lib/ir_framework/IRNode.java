@@ -994,6 +994,17 @@ public class IRNode {
         idealIndependentNameRegex(XOR_V_MASK, "XorVMask");
     }
 
+    public static final String ZLOADP_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "ZLOADP_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "zLoadP" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(ZLOADP_WITH_BARRIER_FLAG, regex);
+    }
+
+    public static final String ZSTOREP_WITH_BARRIER_FLAG = COMPOSITE_PREFIX + "ZSTOREP_WITH_BARRIER_FLAG" + POSTFIX;
+    static {
+        String regex = START + "zStoreP" + MID + "barrier\\(\\s*" + IS_REPLACED + "\\s*\\)" + END;
+        machOnly(ZSTOREP_WITH_BARRIER_FLAG, regex);
+    }
 
     /*
      * Utility methods to set up IR_NODE_MAPPINGS.
