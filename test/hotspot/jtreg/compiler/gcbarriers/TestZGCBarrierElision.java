@@ -61,9 +61,7 @@ public class TestZGCBarrierElision {
         framework.addScenarios(zgc).start();
     }
 
-    static void blackhole(Content t) {}
-
-    static void blackhole(Payload p) {}
+    static void blackhole(Object o) {}
 
     @Test
     @IR(counts = { IRNode.ZLOADP_WITH_BARRIER_FLAG, "strong", "1" },
@@ -111,14 +109,36 @@ public class TestZGCBarrierElision {
         p.c = t1;
     }
 
+    @Test
+    @IR(counts = { IRNode.ZSTOREP_WITH_BARRIER_FLAG, "elided", "1" },
+        phase = CompilePhase.FINAL_CODE)
+    private static void testArrayAllocationFollowedByConstantStore(Payload p0) {
+        Payload[] p = new Payload[10];
+        blackhole(p);
+        p[5] = p0;
+    }
+
+    @Test
+    @IR(counts = { IRNode.ZSTOREP_WITH_BARRIER_FLAG, "elided", "1" },
+        phase = CompilePhase.FINAL_CODE)
+    private static void testArrayAllocationFollowedByVariableStore(Payload p0, int index) {
+        Payload[] p = new Payload[10];
+        blackhole(p);
+        p[index] = p0;
+    }
+
     @Run(test = {"testLoadFollowedByLoad",
                  "testStoreFollowedByStore",
                  "testStoreFollowedByLoad",
-                 "testLoadFollowedByStore"})
+                 "testLoadFollowedByStore",
+                 "testArrayAllocationFollowedByConstantStore",
+                 "testArrayAllocationFollowedByVariableStore"})
     private void run() {
         testLoadFollowedByLoad(p);
         testStoreFollowedByStore(p, c1, c2);
         testStoreFollowedByLoad(p, c1);
         testLoadFollowedByStore(p, c1);
+        testArrayAllocationFollowedByConstantStore(p);
+        testArrayAllocationFollowedByVariableStore(p, 5);
     }
 }
