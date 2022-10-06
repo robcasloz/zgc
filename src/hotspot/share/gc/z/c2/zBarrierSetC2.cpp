@@ -958,7 +958,12 @@ void ZBarrierSetC2::dump_mem_info(MachNode* const mach, outputStream* st) const 
   if (mem == NULL) {
     st->print("<null mem>");
   } else {
-    st->print("%d+%ld", mem->_idx, offset);
+    st->print("%d+", mem->_idx);
+    if (is_concrete_offset(offset)) {
+      st->print("%ld", offset);
+    } else {
+      st->print("?");
+    }
   }
 }
 
