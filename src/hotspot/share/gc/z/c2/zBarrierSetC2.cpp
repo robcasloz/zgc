@@ -584,16 +584,26 @@ static const Node* look_through_node(const Node* node) {
   return node;
 }
 
+// Computes the base + offset components of the memory address accessed by mach.
+// Returns a node representing the base address (or NULL if it cannot be found),
+// and an offset (which may be a concrete value or a special signal value if the
+// offset cannot be found, e.g. because it is not a compile-time constant).
 static const Node* get_base_and_offset(const MachNode* mach, intptr_t& offset) {
   const TypePtr* adr_type = NULL;
   offset = 0;
   const Node* base = mach->get_base_and_disp(offset, adr_type);
-
-  if (base == NULL || base == NodeSentinel || offset < 0) {
+  if (base == NULL || base == NodeSentinel) {
     return NULL;
   }
 
   return look_through_node(base);
+}
+
+// Whether the given offset is concrete (known at compile-time) and nonnegative.
+static bool is_concrete_offset(intptr_t offset) {
+  // This test implies the offset is concrete, i.e.
+  // offset != Type::OffsetTop && offset != Type::OffsetBot.
+  return offset >= 0;
 }
 
 // Match the phi node that connects a TLAB allocation fast path with its slowpath
@@ -612,7 +622,7 @@ static bool is_allocation(const Node* node) {
   const TypePtr* adr_type = NULL;
   intptr_t offset;
   const Node* base = get_base_and_offset(fast_mach, offset);
-  if (base == NULL || !base->is_Mach()) {
+  if (base == NULL || !base->is_Mach() || !is_concrete_offset(offset)) {
     return false;
   }
   const MachNode* base_mach = base->as_Mach();
@@ -657,7 +667,9 @@ void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_L
         intptr_t mem_offset;
         const Node* mem_obj = get_base_and_offset(mem_mach, mem_offset);
 
-        if (mem_obj == NULL) {
+        if (mem_obj == NULL ||
+            !is_concrete_offset(access_offset) ||
+            !is_concrete_offset(mem_offset)) {
           // No information available
           continue;
         }
