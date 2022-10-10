@@ -606,6 +606,22 @@ static bool is_concrete_offset(intptr_t offset) {
   return offset >= 0;
 }
 
+#ifdef ASSERT
+// Whether the given Phi node represents an array allocation.
+static bool is_array_allocation(const Node* node) {
+  precond(node->is_Phi());
+  if (!node->raw_out(0)->isa_Mach()) {
+    return true;
+  }
+  MachNode* cc = node->raw_out(0)->as_Mach();
+  while (cc->is_SpillCopy()) {
+    cc = cc->raw_out(0)->as_Mach();
+  }
+  return cc->ideal_Opcode() == Op_CheckCastPP &&
+         cc->get_ptr_type()->isa_aryptr();
+}
+#endif // ASSERT
+
 // Match the phi node that connects a TLAB allocation fast path with its slowpath
 static bool is_allocation(const Node* node) {
   if (node->req() != 3) {
@@ -661,6 +677,9 @@ void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_L
         if (mem != access_obj) {
           continue;
         }
+        // TODO: turn this into a soft continue?
+        assert(is_array_allocation(mem) || is_concrete_offset(access_offset),
+               "accesses to regular object fields should be concrete");
       } else {
         // Access node
         MachNode* mem_mach = mem->as_Mach();
