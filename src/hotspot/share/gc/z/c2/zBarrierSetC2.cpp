@@ -606,21 +606,44 @@ static bool is_concrete_offset(intptr_t offset) {
   return offset >= 0;
 }
 
-#ifdef ASSERT
-// Whether the given Phi node represents an array allocation.
-static bool is_array_allocation(const Node* node) {
-  precond(node->is_Phi());
-  if (!node->raw_out(0)->isa_Mach()) {
-    return true;
+// Whether the given Phi node corresponds to an array allocation.
+// This test is incomplete: in some edge cases, it might return false even
+// though the node does correspond to an array allocation.
+static bool is_array_allocation(const Node* phi) {
+  precond(phi->is_Phi());
+  // Check whether phi has a successor cast (CheckCastPP) to Java array pointer,
+  // possibly below spill copies and other cast nodes. Limit the exploration to
+  // a single path from the phi node consisting of these node types.
+  const Node* current = phi;
+  while (true) {
+    const Node* next = nullptr;
+    for (DUIterator_Fast imax, i = current->fast_outs(imax); i < imax; i++) {
+      if (!current->fast_out(i)->isa_Mach()) {
+        continue;
+      }
+      const MachNode* succ = current->fast_out(i)->as_Mach();
+      if (succ->ideal_Opcode() == Op_CheckCastPP) {
+        if (succ->get_ptr_type()->isa_aryptr()) {
+          // Cast to Java array pointer: phi corresponds to an array allocation.
+          return true;
+        }
+        // Other cast: record as candidate for further exploration.
+        next = succ;
+      } else if (succ->is_SpillCopy() && next == nullptr) {
+        // Spill copy, and no better candidate found: record as candidate.
+        next = succ;
+      }
+    }
+    if (next == nullptr) {
+      // No evidence found that phi corresponds to an array allocation, and no
+      // candidates available to continue exploring.
+      return false;
+    }
+    // Continue exploring below the best candidate found.
+    current = next;
   }
-  MachNode* cc = node->raw_out(0)->as_Mach();
-  while (cc->is_SpillCopy()) {
-    cc = cc->raw_out(0)->as_Mach();
-  }
-  return cc->ideal_Opcode() == Op_CheckCastPP &&
-         cc->get_ptr_type()->isa_aryptr();
+  ShouldNotReachHere();
 }
-#endif // ASSERT
 
 // Match the phi node that connects a TLAB allocation fast path with its slowpath
 static bool is_allocation(const Node* node) {
@@ -677,9 +700,12 @@ void ZBarrierSetC2::analyze_dominating_barriers_impl(Node_List& accesses, Node_L
         if (mem != access_obj) {
           continue;
         }
-        // TODO: turn this into a soft continue?
-        assert(is_array_allocation(mem) || is_concrete_offset(access_offset),
-               "accesses to regular object fields should be concrete");
+        if (!is_concrete_offset(access_offset) && !is_array_allocation(mem)) {
+          // The accessed address has a variable or unknown offset, but the
+          // allocated object cannot be found to be an array. Avoid eliding in
+          // this case, to be on the safe side.
+          continue;
+        }
       } else {
         // Access node
         MachNode* mem_mach = mem->as_Mach();
