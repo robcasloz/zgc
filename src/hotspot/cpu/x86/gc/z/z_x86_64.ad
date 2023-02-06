@@ -95,6 +95,59 @@ static void z_store_barrier(MacroAssembler& _masm, const MachNode* node, Address
   }
 }
 
+static void z_compare_and_exchange_p(MacroAssembler& _masm, const MachNode* node, Address mem_addr, Register oldval_reg, Register newval_reg, Register tmp_reg) {
+  assert_different_registers(oldval_reg, mem_addr.base());
+  assert_different_registers(oldval_reg, newval_reg);
+  z_store_barrier(_masm, node, mem_addr, newval_reg, tmp_reg, true /* is_atomic */);
+  z_color(_masm, node, oldval_reg);
+  __ lock();
+  __ cmpxchgptr(tmp_reg, mem_addr);
+  z_uncolor(_masm, node, oldval_reg);
+}
+
+static void z_compare_and_swap_p(MacroAssembler& _masm, const MachNode* node, Register res_reg, Address mem_addr, Register oldval_reg, Register newval_reg, Register tmp_reg) {
+  assert_different_registers(oldval_reg, mem_addr.base());
+  z_store_barrier(_masm, node, mem_addr, newval_reg, tmp_reg, true /* is_atomic */);
+  z_color(_masm, node, oldval_reg);
+  __ lock();
+  __ cmpxchgptr(tmp_reg, mem_addr);
+  __ setb(Assembler::equal, res_reg);
+  __ movzbl(res_reg, res_reg);
+}
+
+static void z_exchange_p(MacroAssembler& _masm, const MachNode* node, Address mem_addr, Register newval_reg, Register tmp_reg) {
+  assert_different_registers(mem_addr.base(), newval_reg);
+  z_store_barrier(_masm, node, mem_addr, newval_reg, tmp_reg, true /* is_atomic */);
+  __ movptr(newval_reg, tmp_reg);
+  __ xchgptr(newval_reg, mem_addr);
+  z_uncolor(_masm, node, newval_reg);
+}
+
+%}
+
+source_hpp %{
+
+static inline bool is_different_addr_oldval_in_cas(const Node* cas) {
+  const Node* addp = cas->in(MemNode::Address);
+  const Node* binary = cas->in(MemNode::ValueIn);
+  if (addp == nullptr || !addp->is_AddP() || binary == nullptr) {
+    return false;
+  }
+  const Node* addr = addp->in(MemNode::Address);
+  const Node* oldval = binary->in(1);
+  return addr != nullptr && oldval != nullptr && addr != oldval;
+}
+
+static inline bool is_different_addr_newval_in_exchange(const Node* exchange) {
+  const Node* addp = exchange->in(MemNode::Address);
+  if (addp == nullptr || !addp->is_AddP()) {
+    return false;
+  }
+  const Node* addr = addp->in(MemNode::Address);
+  const Node* newval = exchange->in(MemNode::ValueIn);
+  return addr != nullptr && newval != nullptr && addr != newval;
+}
+
 %}
 
 // Load Pointer
@@ -177,14 +230,22 @@ instruct zCompareAndExchangeP(indirect mem, no_rax_RegP newval, rRegP tmp, rax_R
             "cmpxchgq $newval, $mem" %}
 
   ins_encode %{
-    assert_different_registers($oldval$$Register, $mem$$Register);
-    assert_different_registers($oldval$$Register, $newval$$Register);
-    const Address mem_addr = Address($mem$$Register, 0);
-    z_store_barrier(_masm, this, mem_addr, $newval$$Register, $tmp$$Register, true /* is_atomic */);
-    z_color(_masm, this, $oldval$$Register);
-    __ lock();
-    __ cmpxchgptr($tmp$$Register, mem_addr);
-    z_uncolor(_masm, this, $oldval$$Register);
+    z_compare_and_exchange_p(_masm, this, Address($mem$$Register, 0), $oldval$$Register, $newval$$Register, $tmp$$Register);
+  %}
+
+  ins_pipe(pipe_cmpxchg);
+%}
+
+instruct zCompareAndExchangePMem(memory mem, no_rax_RegP newval, rRegP tmp, rax_RegP oldval, rFlagsReg cr) %{
+  match(Set oldval (CompareAndExchangeP mem (Binary oldval newval)));
+  predicate(UseZGC && is_different_addr_oldval_in_cas(n) && n->as_LoadStore()->barrier_data() != 0);
+  effect(TEMP tmp, KILL cr);
+
+  format %{ "lock\n\t"
+            "cmpxchgq $newval, $mem" %}
+
+  ins_encode %{
+    z_compare_and_exchange_p(_masm, this, $mem$$Address, $oldval$$Register, $newval$$Register, $tmp$$Register);
   %}
 
   ins_pipe(pipe_cmpxchg);
@@ -202,14 +263,25 @@ instruct zCompareAndSwapP(rRegI res, indirect mem, rRegP newval, rRegP tmp, rax_
             "movzbl   $res, $res" %}
 
   ins_encode %{
-    assert_different_registers($oldval$$Register, $mem$$Register);
-    const Address mem_addr = Address($mem$$Register, 0);
-    z_store_barrier(_masm, this, mem_addr, $newval$$Register, $tmp$$Register, true /* is_atomic */);
-    z_color(_masm, this, $oldval$$Register);
-    __ lock();
-    __ cmpxchgptr($tmp$$Register, mem_addr);
-    __ setb(Assembler::equal, $res$$Register);
-    __ movzbl($res$$Register, $res$$Register);
+    z_compare_and_swap_p(_masm, this, $res$$Register, Address($mem$$Register, 0), $oldval$$Register, $newval$$Register, $tmp$$Register);
+  %}
+
+  ins_pipe(pipe_cmpxchg);
+%}
+
+instruct zCompareAndSwapPMem(rRegI res, memory mem, rRegP newval, rRegP tmp, rax_RegP oldval, rFlagsReg cr) %{
+  match(Set res (CompareAndSwapP mem (Binary oldval newval)));
+  match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
+  predicate(UseZGC && is_different_addr_oldval_in_cas(n) && n->as_LoadStore()->barrier_data() != 0);
+  effect(TEMP tmp, KILL oldval, KILL cr);
+
+  format %{ "lock\n\t"
+            "cmpxchgq $newval, $mem\n\t"
+            "sete     $res\n\t"
+            "movzbl   $res, $res" %}
+
+  ins_encode %{
+    z_compare_and_swap_p(_masm, this, $res$$Register, $mem$$Address, $oldval$$Register, $newval$$Register, $tmp$$Register);
   %}
 
   ins_pipe(pipe_cmpxchg);
@@ -223,12 +295,21 @@ instruct zXChgP(indirect mem, rRegP newval, rRegP tmp, rFlagsReg cr) %{
   format %{ "xchgq    $newval, $mem" %}
 
   ins_encode %{
-    assert_different_registers($mem$$Register, $newval$$Register);
-    const Address mem_addr = Address($mem$$Register, 0);
-    z_store_barrier(_masm, this, mem_addr, $newval$$Register, $tmp$$Register, true /* is_atomic */);
-    __ movptr($newval$$Register, $tmp$$Register);
-    __ xchgptr($newval$$Register, mem_addr);
-    z_uncolor(_masm, this, $newval$$Register);
+    z_exchange_p(_masm, this, Address($mem$$Register, 0), $newval$$Register, $tmp$$Register);
+  %}
+
+  ins_pipe(pipe_cmpxchg);
+%}
+
+instruct zXChgPMem(memory mem, rRegP newval, rRegP tmp, rFlagsReg cr) %{
+  match(Set newval (GetAndSetP mem newval));
+  predicate(UseZGC && is_different_addr_newval_in_exchange(n) && n->as_LoadStore()->barrier_data() != 0);
+  effect(TEMP tmp, KILL cr);
+
+  format %{ "xchgq    $newval, $mem" %}
+
+  ins_encode %{
+    z_exchange_p(_masm, this, $mem$$Address, $newval$$Register, $tmp$$Register);
   %}
 
   ins_pipe(pipe_cmpxchg);
