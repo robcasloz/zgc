@@ -599,6 +599,54 @@ static bool is_concrete(intptr_t offset) {
   return !is_undefined(offset) && !is_unknown(offset);
 }
 
+static bool is_ptr_oper(const MachNode* mach, const MachOper* oper) {
+  const Type* oper_type = oper->type();
+  if (oper_type == NULL) {
+    return false;
+  }
+  if (!oper_type->isa_ptr()) {
+    return false;
+  }
+  return true;
+}
+
+static bool is_oopptr_oper(const MachNode* mach, const MachOper* oper) {
+  assert(is_ptr_oper(mach, oper), "");
+  int operand_index = mach->operand_index(oper);
+  if (operand_index < 0 || mach->in(operand_index) == NULL) {
+    return false;
+  }
+  const Type* in_type = mach->in(operand_index)->bottom_type();
+  if (in_type == NULL || !in_type->isa_oopptr()) {
+    return false;
+  }
+  return true;
+}
+
+static bool match_addp_reg_x(const MachNode *mach, intptr_t &offset) {
+  if (mach->ideal_Opcode() != Op_AddP) {
+    return false;
+  }
+  if (mach->num_opnds() != 3) {
+    return false;
+  }
+  const MachOper* dst = mach->_opnds[0];
+  const MachOper* src1 = mach->_opnds[1];
+  const MachOper* src2 = mach->_opnds[2];
+  if (!is_ptr_oper(mach, dst) || !is_ptr_oper(mach, src1)) {
+    return false;
+  }
+  if (!is_oopptr_oper(mach, src1)) {
+    return false;
+  }
+  if (src2->type() == TypeLong::LONG) {
+    offset = src2->constant();
+    return true;
+  }
+  offset = Type::OffsetBot;
+  return true;
+}
+
 // Compute base + offset components of the memory address accessed by mach.
 // Return a node representing the base address, or NULL if the base cannot be
 // found or the offset is undefined or a concrete negative value. If a non-NULL
@@ -606,7 +654,21 @@ static bool is_concrete(intptr_t offset) {
 static const Node* get_base_and_offset(const MachNode* mach, intptr_t& offset) {
   const TypePtr* adr_type = NULL;
   offset = 0;
-  const Node* const base = mach->get_base_and_disp(offset, adr_type);
+  const Node* base = mach->get_base_and_disp(offset, adr_type);
+
+  if (offset == 0 && base != NULL && base != NodeSentinel && base->is_Mach() &&
+      base->as_Mach()->ideal_Opcode() == Op_AddP) {
+    // The memory address is computed by another instruction and fed via an
+    // indirect memory operand (indicated by offset == 0).
+    const MachNode* address_computation = base->as_Mach();
+    if (address_computation->memory_operand() != NULL) {
+      // address_computation is a lea-like instruction with a memory operand.
+      base = address_computation->get_base_and_disp(offset, adr_type);
+    } else if (match_addp_reg_x(address_computation, offset)) {
+      // address_computation is an addp-like instruction without memory operand.
+      base = address_computation->in(AddPNode::Base);
+    }
+  }
 
   if (base == NULL || base == NodeSentinel ||
       is_undefined(offset) || (is_concrete(offset) && offset < 0)) {

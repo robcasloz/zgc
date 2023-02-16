@@ -695,15 +695,6 @@ int InstructForm::memory_operand(FormDict &globals) const {
   assert(USE_of_memory >= DEF_of_memory, "unpaired memory DEF");
   USE_of_memory -= DEF_of_memory;   // treat paired DEF/USE as one occurrence
   if( (USE_of_memory + DEF_of_memory) > 0 ) {
-    if( is_simple_chain_rule(globals) ) {
-      //fprintf(stderr, "Warning: chain rule is not really a memory user.\n");
-      //((InstructForm*)this)->dump();
-      // Preceding code prints nothing on sparc and these insns on intel:
-      // leaP8 leaP32 leaPIdxOff leaPIdxScale leaPIdxScaleOff leaP8 leaP32
-      // leaPIdxOff leaPIdxScale leaPIdxScaleOff
-      return NO_MEMORY_OPERAND;
-    }
-
     if( DEF_of_memory == 1 ) {
       assert(unique != NULL, "");
       if( USE_of_memory == 0 ) {
